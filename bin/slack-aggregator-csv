@@ -69,7 +69,7 @@ def parse_messages(src_file: pathlib.Path) -> Iterator[tuple[Any, ...]]:
         src_file.parent.name,
         message['ts'],
         message.get('user') or message.get('bot_id') or 'unknown',
-        message['text'],
+        message['text'].replace(r'\.', r'\\.'),
         json.dumps({key: val for key, val in message.items() if key not in no_misc_keys}),
     )
 
