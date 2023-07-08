@@ -1,0 +1,129 @@
+#!/usr/bin/env python
+
+from __future__ import annotations
+
+import csv
+import json
+import pathlib
+from collections.abc import Iterator
+from typing import Any, Callable
+
+
+def parse_users(src_file: pathlib.Path) -> Iterator[tuple[Any, ...]]:
+    users = json.loads(src_file.read_text())
+    no_misc_keys = ['id', 'name', 'real_name']
+    no_misc_keys.append('profile')  # stores in profile table
+
+    yield ('user_id', 'name', 'real_name', 'misc')
+
+    for user in users:
+        yield (
+            user['id'],
+            user['name'],
+            user['real_name'],
+            json.dumps({key: val for key, val in user.items() if key not in no_misc_keys}),
+        )
+
+
+def parse_profiles(src_file: pathlib.Path) -> Iterator[tuple[Any, ...]]:
+    users = json.loads(src_file.read_text())
+    no_misc_keys = ['image_24', 'image_32', 'image_48', 'image_72', 'image_192', 'image_512']
+
+    yield ('user_id', 'image_24', 'image_32', 'image_48', 'image_72', 'image_192', 'image_512', 'misc')
+
+    for user in users:
+        profile = user['profile']
+        yield (
+            user['id'],
+            profile['image_24'],
+            profile['image_32'],
+            profile['image_48'],
+            profile['image_72'],
+            profile['image_192'],
+            profile['image_512'],
+            json.dumps({key: val for key, val in profile.items() if key not in no_misc_keys}),
+        )
+
+
+def parse_channels(src_file: pathlib.Path) -> Iterator[tuple[Any, ...]]:
+    channels = json.loads(src_file.read_text())
+    no_misc_keys = ['id', 'name']
+
+    yield ('channel_id', 'name', 'misc')
+
+    for channel in channels:
+        yield (
+            channel['id'],
+            channel['name'],
+            json.dumps({key: val for key, val in channel.items() if key not in no_misc_keys}),
+        )
+
+
+def parse_messages(src_file: pathlib.Path) -> Iterator[tuple[Any, ...]]:
+    message: dict[str, Any] = json.loads(src_file.read_text())
+    no_misc_keys = ['ts', 'user', 'bot_id', 'text']
+
+    yield ('channel_id', 'ts', 'user_id', 'text', 'misc')
+
+    yield (
+        src_file.parent.name,
+        message['ts'],
+        message.get('user') or message.get('bot_id') or 'unknown',
+        message['text'],
+        json.dumps({key: val for key, val in message.items() if key not in no_misc_keys}),
+    )
+
+
+def write_csv(parser: Callable[..., Any], src_file: pathlib.Path, dest_file: pathlib.Path) -> None:
+    with dest_file.open('w') as f:
+        writer = csv.writer(f, quoting=csv.QUOTE_NONNUMERIC)
+        iter = parser(src_file)
+        writer.writerow(next(iter))
+        for row in iter:
+            writer.writerow(row)
+
+
+def write_dir_csv(parser: Callable[..., Any], src_dir: pathlib.Path, dest_file: pathlib.Path) -> None:
+    is_write_header = False
+
+    with dest_file.open('w') as f:
+        writer = csv.writer(f, quoting=csv.QUOTE_NONNUMERIC)
+        for file in src_dir.iterdir():
+            if not file.is_file():
+                continue
+
+            iter = parser(file)
+
+            if is_write_header:
+                _ = next(iter)
+            else:
+                writer.writerow(next(iter))
+                is_write_header = True
+
+            for row in iter:
+                writer.writerow(row)
+
+
+def main():
+    read_dir = pathlib.Path('slack-aggregator/log')
+    write_dir = pathlib.Path('slack-aggregator-csv')
+    write_dir.mkdir(parents=True, exist_ok=True)
+
+    write_csv(parse_users, read_dir / 'users.json', write_dir / 'user.csv')
+    write_csv(parse_profiles, read_dir / 'users.json', write_dir / 'profile.csv')
+    write_csv(parse_channels, read_dir / 'channels.json', write_dir / 'channel.csv')
+
+    (write_dir / 'message').mkdir(parents=True, exist_ok=True)
+
+    for channel_dir in (read_dir / 'messages').glob('*'):
+        if not channel_dir.is_dir():
+            continue
+
+        print('.', end='', flush=True)  # progress indicator
+        write_dir_csv(parse_messages, channel_dir, write_dir / 'message' / f'{channel_dir.name}.csv')
+
+    print()  # end progress indicator
+
+
+if __name__ == '__main__':
+    main()
