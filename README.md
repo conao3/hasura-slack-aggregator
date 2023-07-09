@@ -1,5 +1,7 @@
 # js-slack-aggregator-viewer
 
+![](./blob/hasura.png)
+
 ## Usage
 
 ### Start server
