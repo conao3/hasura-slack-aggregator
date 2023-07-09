@@ -23,16 +23,53 @@ def replace_none(value: tuple[Any, ...]) -> tuple[Any, ...]:
 
 def parse_users(src_file: pathlib.Path) -> Iterator[tuple[Any, ...]]:
     users = json.loads(src_file.read_text())
-    no_misc_keys = ['id', 'name', 'real_name']
+    mapping = {
+        'user_id': ['id'],
+        'name': ['name'],
+        'real_name': ['real_name'],
+        'tz': ['tz'],
+        'color': ['color'],
+        'is_bot': ['is_bot'],
+        'deleted': ['deleted'],
+        'team_id': ['team_id'],
+        'updated': ['updated'],
+        'is_admin': ['is_admin'],
+        'is_owner': ['is_owner'],
+        'tz_label': ['tz_label'],
+        'tz_offset': ['tz_offset'],
+        'is_app_user': ['is_app_user'],
+        'is_restricted': ['is_restricted'],
+        'is_primary_owner': ['is_primary_owner'],
+        'is_email_confirmed': ['is_email_confirmed'],
+        'is_ultra_restricted': ['is_ultra_restricted'],
+        'who_can_share_contact_card': ['who_can_share_contact_card'],
+    }
+    no_misc_keys = [v for val in mapping.values() for v in val]
     no_misc_keys.append('profile')  # stores in profile table
 
-    yield ('user_id', 'name', 'real_name', 'misc')
+    yield tuple(mapping.keys())
 
     for user in users:
         yield (
             user['id'],
-            user['name'],
-            user['real_name'],
+            user.get('name'),
+            user.get('real_name'),
+            user.get('tz'),
+            user.get('color'),
+            user.get('is_bot'),
+            user.get('deleted'),
+            user.get('team_id'),
+            datetime.fromtimestamp(user.get('updated')) if user.get('updated') else None,
+            user.get('is_admin'),
+            user.get('is_owner'),
+            user.get('tz_label'),
+            user.get('tz_offset'),
+            user.get('is_app_user'),
+            user.get('is_restricted'),
+            user.get('is_primary_owner'),
+            user.get('is_email_confirmed'),
+            user.get('is_ultra_restricted'),
+            user.get('who_can_share_contact_card'),
             json.dumps({key: val for key, val in user.items() if key not in no_misc_keys}, ensure_ascii=False),
         )
 
