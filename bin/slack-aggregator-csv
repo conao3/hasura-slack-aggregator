@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+from datetime import datetime
 import json
 import pathlib
 from collections.abc import Iterator
@@ -58,15 +59,76 @@ def parse_profiles(src_file: pathlib.Path) -> Iterator[tuple[Any, ...]]:
 
 def parse_channels(src_file: pathlib.Path) -> Iterator[tuple[Any, ...]]:
     channels = json.loads(src_file.read_text())
-    no_misc_keys = ['id', 'name']
+    mapping = {
+        'channel_id': ['id'],
+        'name': ['name'],
+        'context_team_id': ['context_team_id'],
+        'created': ['created'],
+        'creator': ['creator'],
+        'is_archived': ['is_archived'],
+        'is_channel': ['is_channel'],
+        'is_ext_shared': ['is_ext_shared'],
+        'is_frozen': ['is_frozen'],
+        'is_general': ['is_general'],
+        'is_group': ['is_group'],
+        'is_im': ['is_im'],
+        'is_member': ['is_member'],
+        'is_mpim': ['is_mpim'],
+        'is_org_shared': ['is_org_shared'],
+        'is_pending_ext_shared': ['is_pending_ext_shared'],
+        'is_private': ['is_private'],
+        'is_shared': ['is_shared'],
+        'name_normalized': ['name_normalized'],
+        'num_members': ['num_members'],
+        'parent_conversation': ['parent_conversation'],
+        'pending_connected_team_ids': ['pending_connected_team_ids'],
+        'pending_shared': ['pending_shared'],
+        'previous_names': ['previous_names'],
+        'properties': ['properties'],
+        'purpose': ['purpose'],
+        'shared_team_ids': ['shared_team_ids'],
+        'topic': ['topic'],
+        'unlinked': ['unlinked'],
+        'updated': ['updated'],
+    }
+    no_misc_keys = [v for val in mapping.values() for v in val]
 
-    yield ('channel_id', 'name', 'misc')
+    yield tuple(mapping.keys())
 
     for channel in channels:
+        misc = {key: val for key, val in channel.items() if key not in no_misc_keys}
         yield (
             channel['id'],
-            channel['name'],
-            json.dumps({key: val for key, val in channel.items() if key not in no_misc_keys}),
+            channel.get('name'),
+            channel.get('context_team_id'),
+            datetime.fromtimestamp(channel.get('created')) if channel.get('created') else None,
+            channel.get('creator'),
+            channel.get('is_archived'),
+            channel.get('is_channel'),
+            channel.get('is_ext_shared'),
+            channel.get('is_frozen'),
+            channel.get('is_general'),
+            channel.get('is_group'),
+            channel.get('is_im'),
+            channel.get('is_member'),
+            channel.get('is_mpim'),
+            channel.get('is_org_shared'),
+            channel.get('is_pending_ext_shared'),
+            channel.get('is_private'),
+            channel.get('is_shared'),
+            channel.get('name_normalized'),
+            channel.get('num_members'),
+            json.dumps(channel.get('parent_conversation'), ensure_ascii=False) if channel.get('parent_conversation') else None,
+            json.dumps(channel.get('pending_connected_team_ids'), ensure_ascii=False) if channel.get('pending_connected_team_ids') else None,
+            json.dumps(channel.get('pending_shared'), ensure_ascii=False) if channel.get('pending_shared') else None,
+            json.dumps(channel.get('previous_names'), ensure_ascii=False) if channel.get('previous_names') else None,
+            json.dumps(channel.get('properties'), ensure_ascii=False) if channel.get('properties') else None,
+            json.dumps(channel.get('purpose'), ensure_ascii=False) if channel.get('purpose') else None,
+            json.dumps(channel.get('shared_team_ids'), ensure_ascii=False) if channel.get('shared_team_ids') else None,
+            json.dumps(channel.get('topic'), ensure_ascii=False) if channel.get('topic') else None,
+            channel.get('unlinked'),
+            datetime.fromtimestamp(channel.get('updated') / 1000) if channel.get('updated') else None,
+            json.dumps(misc, ensure_ascii=False) if misc else None,
         )
 
 
