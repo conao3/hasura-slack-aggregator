@@ -9,6 +9,17 @@ from collections.abc import Iterator
 from typing import Any, Callable
 
 
+class _CSVEmpty(int):
+    def __str__(self):
+        return ""
+
+CSVEmpty = _CSVEmpty()
+
+
+def replace_none(value: tuple[Any, ...]) -> tuple[Any, ...]:
+    return tuple((CSVEmpty if v is None else v) for v in value)
+
+
 def parse_users(src_file: pathlib.Path) -> Iterator[tuple[Any, ...]]:
     users = json.loads(src_file.read_text())
     no_misc_keys = ['id', 'name', 'real_name']
@@ -21,7 +32,7 @@ def parse_users(src_file: pathlib.Path) -> Iterator[tuple[Any, ...]]:
             user['id'],
             user['name'],
             user['real_name'],
-            json.dumps({key: val for key, val in user.items() if key not in no_misc_keys}),
+            json.dumps({key: val for key, val in user.items() if key not in no_misc_keys}, ensure_ascii=False),
         )
 
 
@@ -41,7 +52,7 @@ def parse_profiles(src_file: pathlib.Path) -> Iterator[tuple[Any, ...]]:
             profile['image_72'],
             profile['image_192'],
             profile['image_512'],
-            json.dumps({key: val for key, val in profile.items() if key not in no_misc_keys}),
+            json.dumps({key: val for key, val in profile.items() if key not in no_misc_keys}, ensure_ascii=False),
         )
 
 
@@ -61,16 +72,63 @@ def parse_channels(src_file: pathlib.Path) -> Iterator[tuple[Any, ...]]:
 
 def parse_messages(src_file: pathlib.Path) -> Iterator[tuple[Any, ...]]:
     message: dict[str, Any] = json.loads(src_file.read_text())
-    no_misc_keys = ['ts', 'user', 'bot_id', 'text']
+    mapping = {
+        'channel_id': [],
+        'ts': ['ts'],
+        'user_id': ['user', 'bot_id'],
+        'text': ['text'],
+        'attachments': ['attachments'],
+        'blocks': ['blocks'],
+        'edited': ['edited'],
+        'file': ['file'],
+        'files': ['files'],
+        'hidden': ['hidden'],
+        'icons': ['icons'],
+        'is_locked': ['is_locked'],
+        'pinned_info': ['pinned_info'],
+        'reactions': ['reactions'],
+        'reply_count': ['reply_count'],
+        'reply_users': ['reply_users'],
+        'reply_users_count': ['reply_users_count'],
+        'root': ['root'],
+        'saved': ['saved'],
+        'subscribed': ['subscribed'],
+        'subtype': ['subtype'],
+        'thread_ts': ['thread_ts'],
+        'upload': ['upload'],
+        'upload_reply_to': ['upload_reply_to'],
+    }
+    no_misc_keys = [v for val in mapping.values() for v in val]
+    misc = {key: val for key, val in message.items() if key not in no_misc_keys}
 
-    yield ('channel_id', 'ts', 'user_id', 'text', 'misc')
+    yield tuple(mapping.keys())
 
     yield (
         src_file.parent.name,
         message['ts'],
         message.get('user') or message.get('bot_id') or 'unknown',
         message['text'].replace(r'\.', r'\\.'),
-        json.dumps({key: val for key, val in message.items() if key not in no_misc_keys}),
+        json.dumps(message.get('attachments'), ensure_ascii=False) if message.get('attachments') else None,
+        json.dumps(message.get('blocks'), ensure_ascii=False) if message.get('blocks') else None,
+        json.dumps(message.get('edited'), ensure_ascii=False) if message.get('edited') else None,
+        json.dumps(message.get('file'), ensure_ascii=False) if message.get('file') else None,
+        json.dumps(message.get('files'), ensure_ascii=False) if message.get('files') else None,
+        message.get('hidden'),
+        json.dumps(message.get('icons'), ensure_ascii=False) if message.get('icons') else None,
+        message.get('is_locked'),
+        json.dumps(message.get('pinned_info'), ensure_ascii=False) if message.get('pinned_info') else None,
+        json.dumps(message.get('reactions'), ensure_ascii=False) if message.get('reactions') else None,
+        message.get('reply_count'),
+        json.dumps(message.get('reply_users'), ensure_ascii=False) if message.get('reply_users') else None,
+        message.get('reply_users_count'),
+        json.dumps(message.get('root'), ensure_ascii=False) if message.get('root') else None,
+        json.dumps(message.get('saved'), ensure_ascii=False) if message.get('saved') else None,
+        message.get('subscribed'),
+        message.get('subtype'),
+        message.get('thread_ts'),
+        message.get('upload'),
+        message.get('upload_reply_to'),
+        json.dumps(misc, ensure_ascii=False) if misc else None,
     )
 
 
@@ -80,7 +138,7 @@ def write_csv(parser: Callable[..., Any], src_file: pathlib.Path, dest_file: pat
         iter = parser(src_file)
         writer.writerow(next(iter))
         for row in iter:
-            writer.writerow(row)
+            writer.writerow(replace_none(row))
 
 
 def write_dir_csv(parser: Callable[..., Any], src_dir: pathlib.Path, dest_file: pathlib.Path) -> None:
@@ -101,7 +159,7 @@ def write_dir_csv(parser: Callable[..., Any], src_dir: pathlib.Path, dest_file: 
                 is_write_header = True
 
             for row in iter:
-                writer.writerow(row)
+                writer.writerow(replace_none(row))
 
 
 def main():
