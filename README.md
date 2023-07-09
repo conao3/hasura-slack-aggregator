@@ -1,4 +1,4 @@
-# js-slack-aggregator-viewer
+# hasura-slack-aggregator
 
 ![](./blob/hasura.png)
 
