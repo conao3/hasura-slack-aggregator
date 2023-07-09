@@ -25,6 +25,8 @@ ln -s /path/to/slack-aggregator
 
 `slack-aggregator-csv` is a python script and I use Python 3.11.2
 
+`slack-aggregator` is located at [kuuote/slack-aggregator](https://github.com/kuuote/slack-aggregator) and follow the instruction.
+
 
 ### Load data
 
