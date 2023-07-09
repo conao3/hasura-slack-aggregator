@@ -1,3 +1,13 @@
 table:
   name: all_user_mst
   schema: public
+object_relationships:
+  - name: all_profile_mst
+    using:
+      manual_configuration:
+        column_mapping:
+          user_id: user_id
+        insertion_order: null
+        remote_table:
+          name: all_profile_mst
+          schema: public
