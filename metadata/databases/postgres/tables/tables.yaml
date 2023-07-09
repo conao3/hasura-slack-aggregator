@@ -1,0 +1,4 @@
+- "!include public_all_channel_mst.yaml"
+- "!include public_all_message.yaml"
+- "!include public_all_profile_mst.yaml"
+- "!include public_all_user_mst.yaml"

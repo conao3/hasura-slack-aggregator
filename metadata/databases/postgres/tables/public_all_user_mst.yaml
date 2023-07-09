@@ -1,0 +1,3 @@
+table:
+  name: all_user_mst
+  schema: public
